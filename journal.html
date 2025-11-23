@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Mon Journal Quotidien</title>
+    <style>
+        :root{
+            --bg:#d78df5;
+            --card:#c4d4d2;
+            --muted:#6b7280;
+            --accent:#a8d5e2;
+            --accent2:#cfd159;
+            --accent3:#865ebe;
+            --accent4:#dff7e6;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+            color-scheme: light;
+        }
+        * {box-sizing: border-box}
+        html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#ffffff 60%);font-size:15px;color:#111827}
+        .app{max-width:1100px;margin:28px auto;padding:20px;display:grid;grid-template-columns:1fr 360px;gap:20px}
+        header{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}
+        h1{font-size:20px;margin:0;color:#4f669e}
+        .date-picker{display:flex;gap:8px;align-items:center}
+        input[type="date"]{padding:8px;border-radius:8px;border:1px solid #e6edf3;background:white}
+        .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 6px 18px rgba(12,15,20,0.04)}
+        .section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+        .muted{color:var(--muted);font-size:13px}
+        form{display:flex;gap:8px;flex-wrap:wrap}
+        input[type="text"], input[type="time"], input[type="number"], textarea, select{
+            padding:8px;border-radius:8px;border:1px solid #e6edf3;background:transparent;min-width:0;
+        }
+        button{padding:8px 10px;border-radius:8px;border:0;background:var(--accent);color:#04303a;cursor:pointer}
+        button.ghost{background:transparent;border:1px solid #e6edf3;color:var(--muted)}
+        .list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+        .item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:8px;background:#fbfdff;border:1px solid #eef6fb}
+        .left{display:flex;align-items:center;gap:10px;min-width:0}
+        .pill{padding:6px 8px;border-radius:8px;font-size:13px;background:var(--accent3);color:#3b1f64}
+        .small{font-size:13px;color:var(--muted)}
+        .right{display:flex;gap:8px;align-items:center}
+        .checkbox{width:18px;height:18px;border-radius:4px;background:white;border:1px solid #d1e6ea;display:inline-block}
+        textarea{min-height:60px;resize:vertical}
+        .mood-btn{padding:8px 10px;border-radius:10px;border:1px solid transparent;background:var(--accent2);cursor:pointer}
+        .mood-selected{box-shadow:0 4px 12px rgba(0,0,0,0.06);border-color:rgba(0,0,0,0.06)}
+        .recap .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        footer{grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;margin-top:8px}
+        @media (max-width:940px){.app{grid-template-columns:1fr;}.recap .grid{grid-template-columns:1fr}}
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header>
+            <h1>Planificateur quotidien</h1>
+            <div class="date-picker">
+                <label class="muted">Date</label>
+                <input id="date" type="date" />
+                <button id="todayBtn" class="ghost">Aujourd'hui</button>
+            </div>
+        </header>
+
+        <main>
+            <section class="card" aria-labelledby="plan-title">
+                <div class="section-title">
+                    <strong id="plan-title">Planifier la journée</strong>
+                    <span class="small">Ajoutez vos tâches / rendez-vous</span>
+                </div>
+                <form id="planForm">
+                    <input id="planTime" type="time" required />
+                    <input id="planText" type="text" placeholder="Ex: Réunion, Sport, Étude..." required />
+                    <button type="submit">Ajouter</button>
+                </form>
+                <div id="plansList" class="list" aria-live="polite"></div>
+            </section>
+
+            <section class="card" aria-labelledby="activity-title" style="margin-top:14px">
+                <div class="section-title">
+                    <strong id="activity-title">Enregistrer une activité</strong>
+                    <span class="small">Ce que vous avez fait</span>
+                </div>
+                <form id="activityForm">
+                    <input id="activityTime" type="time" />
+                    <input id="activityText" type="text" placeholder="Ex: Lecture, Promenade..." required />
+                    <button type="submit">Enregistrer</button>
+                </form>
+                <div id="activitiesList" class="list"></div>
+            </section>
+
+            <section class="card" aria-labelledby="consume-title" style="margin-top:14px">
+                <div class="section-title">
+                    <strong id="consume-title">Consommation</strong>
+                    <span class="small">Suivre nourriture, boisson, café...</span>
+                </div>
+                <form id="consumeForm">
+                    <input id="consumeText" type="text" placeholder="Ex: Café, Eau, Sandwich..." required />
+                    <input id="consumeQty" type="number" min="0" step="1" placeholder="Qté" style="width:80px" />
+                    <button type="submit">Ajouter</button>
+                </form>
+                <div id="consumesList" class="list"></div>
+            </section>
+
+            <section class="card" aria-labelledby="mood-title" style="margin-top:14px">
+                <div class="section-title">
+                    <strong id="mood-title">Humeur du jour</strong>
+                    <span class="small">Choisissez et notez</span>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+                    <button class="mood-btn" data-mood="😊">😊 Serein</button>
+                    <button class="mood-btn" data-mood="🙂">🙂 Bien</button>
+                    <button class="mood-btn" data-mood="😐">😐 Neutre</button>
+                    <button class="mood-btn" data-mood="😕">😕 Fatigué</button>
+                    <button class="mood-btn" data-mood="😔">😔 Stressé</button>
+                </div>
+                <textarea id="moodNote" placeholder="Note (facultatif)"></textarea>
+                <div style="margin-top:8px;display:flex;gap:8px">
+                    <button id="saveMood">Enregistrer humeur</button>
+                    <button id="clearDay" class="ghost">Effacer les données du jour</button>
+                </div>
+            </section>
+        </main>
+
+        <aside class="card recap">
+            <div class="section-title">
+                <strong>Récapitulatif</strong>
+                <span class="small">Vue rapide</span>
+            </div>
+
+            <div class="grid">
+                <div>
+                    <div class="muted" style="margin-bottom:6px">Planning</div>
+                    <div id="recapPlans" class="list"></div>
+                </div>
+                <div>
+                    <div class="muted" style="margin-bottom:6px">Activités</div>
+                    <div id="recapActivities" class="list"></div>
+                </div>
+                <div style="grid-column:1/-1;margin-top:8px">
+                    <div class="muted" style="margin-bottom:6px">Consommation</div>
+                    <div id="recapConsumes" class="list"></div>
+                </div>
+                <div style="grid-column:1/-1;margin-top:8px">
+                    <div class="muted" style="margin-bottom:6px">Humeur</div>
+                    <div id="recapMood" class="item"></div>
+                </div>
+            </div>
+
+            <div style="margin-top:10px;display:flex;gap:8px;">
+                <button id="exportBtn" class="ghost">Exporter JSON</button>
+                <button id="importBtn" class="ghost">Importer JSON</button>
+                <input id="importFile" type="file" accept="application/json" style="display:none" />
+            </div>
+        </aside>
+
+        <footer>Interface simple • Couleurs douces • Données stockées localement</footer>
+    </div>
+
+    <script>
+        // GitHub Copilot
+        const dateInput = document.getElementById('date');
+        const todayBtn = document.getElementById('todayBtn');
+        const plansList = document.getElementById('plansList');
+        const activitiesList = document.getElementById('activitiesList');
+        const consumesList = document.getElementById('consumesList');
+        const recapPlans = document.getElementById('recapPlans');
+        const recapActivities = document.getElementById('recapActivities');
+        const recapConsumes = document.getElementById('recapConsumes');
+        const recapMood = document.getElementById('recapMood');
+
+        function iso(date = new Date()){
+            return date.toISOString().slice(0,10);
+        }
+        dateInput.value = iso();
+        todayBtn.onclick = () => dateInput.value = iso();
+
+        function storageKey(d) { return 'journal-'+d; }
+        function load(date){
+            const raw = localStorage.getItem(storageKey(date));
+            return raw ? JSON.parse(raw) : {plans:[], activities:[], consumes:[], mood:null};
+        }
+        function save(date, data){
+            localStorage.setItem(storageKey(date), JSON.stringify(data));
+            render();
+        }
+
+        function render(){
+            const d = dateInput.value;
+            const data = load(d);
+            // plans
+            plansList.innerHTML = '';
+            recapPlans.innerHTML = '';
+            data.plans.sort((a,b)=> (a.time||'') > (b.time||'') ? 1:-1).forEach((p,i)=>{
+                const el = document.createElement('div'); el.className='item';
+                el.innerHTML = '<div class="left"><div class="pill">'+(p.time||'')+'</div><div style="min-width:0"><strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escapeHtml(p.text)+'</strong></div></div><div class="right"><button data-i="'+i+'" class="ghost">Suppr</button></div>';
+                plansList.appendChild(el);
+                const r = el.cloneNode(true);
+                r.querySelector('.ghost').textContent='✘';
+                recapPlans.appendChild(r);
+            });
+            // activities
+            activitiesList.innerHTML = '';
+            recapActivities.innerHTML = '';
+            data.activities.sort((a,b)=> (a.time||'') > (b.time||'') ? 1:-1).forEach((a,i)=>{
+                const el = document.createElement('div'); el.className='item';
+                el.innerHTML = '<div class="left"><div class="pill">'+(a.time||'')+'</div><div style="min-width:0"><div>'+escapeHtml(a.text)+'</div><div class="small">'+(a.note?escapeHtml(a.note):'')+'</div></div></div><div class="right"><button data-i="'+i+'" class="ghost">Suppr</button></div>';
+                activitiesList.appendChild(el);
+                const r = el.cloneNode(true);
+                r.querySelector('.ghost').textContent='✘';
+                recapActivities.appendChild(r);
+            });
+            // consumes
+            consumesList.innerHTML = '';
+            recapConsumes.innerHTML = '';
+            data.consumes.forEach((c,i)=>{
+                const el = document.createElement('div'); el.className='item';
+                el.innerHTML = '<div class="left"><div><strong>'+escapeHtml(c.text)+'</strong><div class="small">Qté: '+(c.qty||0)+'</div></div></div><div class="right"><button data-i="'+i+'" class="ghost">Suppr</button></div>';
+                consumesList.appendChild(el);
+                const r = el.cloneNode(true);
+                r.querySelector('.ghost').textContent='✘';
+                recapConsumes.appendChild(r);
+            });
+            // mood
+            if(data.mood){
+                recapMood.innerHTML = '<div style="display:flex;gap:10px;align-items:center"><div style="font-size:22px">'+escapeHtml(data.mood.value)+'</div><div><div><strong class="small">'+(data.mood.label||'')+'</strong></div><div class="small">'+(data.mood.note?escapeHtml(data.mood.note):'')+'</div></div></div>';
+            } else {
+                recapMood.innerHTML = '<div class="small">Aucune humeur enregistrée</div>';
+            }
+            // attach delete handlers
+            document.querySelectorAll('#plansList .ghost').forEach(btn=>btn.onclick=(e)=>{ const i=+e.target.dataset.i; data.plans.splice(i,1); save(d,data);});
+            document.querySelectorAll('#activitiesList .ghost').forEach(btn=>btn.onclick=(e)=>{ const i=+e.target.dataset.i; data.activities.splice(i,1); save(d,data);});
+            document.querySelectorAll('#consumesList .ghost').forEach(btn=>btn.onclick=(e)=>{ const i=+e.target.dataset.i; data.consumes.splice(i,1); save(d,data);});
+        }
+
+        function escapeHtml(t){ return (''+t).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[m]); }
+
+        // Plan form
+        document.getElementById('planForm').onsubmit = (e)=>{
+            e.preventDefault();
+            const t = document.getElementById('planText').value.trim();
+            const time = document.getElementById('planTime').value;
+            if(!t) return;
+            const d = dateInput.value;
+            const data = load(d);
+            data.plans.push({time, text: t});
+            save(d,data);
+            e.target.reset();
+        };
+
+        // Activity form
+        document.getElementById('activityForm').onsubmit = (e)=>{
+            e.preventDefault();
+            const t = document.getElementById('activityText').value.trim();
+            const time = document.getElementById('activityTime').value;
+            if(!t) return;
+            const d = dateInput.value;
+            const data = load(d);
+            data.activities.push({time, text: t});
+            save(d,data);
+            e.target.reset();
+        };
+
+        // Consume
+        document.getElementById('consumeForm').onsubmit = (e)=>{
+            e.preventDefault();
+            const t = document.getElementById('consumeText').value.trim();
+            const qty = parseInt(document.getElementById('consumeQty').value || '1',10);
+            if(!t) return;
+            const d = dateInput.value;
+            const data = load(d);
+            data.consumes.push({text: t, qty: qty});
+            save(d,data);
+            e.target.reset();
+        };
+
+        // Mood
+        let selectedMood = null;
+        document.querySelectorAll('.mood-btn').forEach(btn=>{
+            btn.onclick = ()=> {
+                document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('mood-selected'));
+                btn.classList.add('mood-selected');
+                selectedMood = btn.dataset.mood;
+            };
+        });
+        document.getElementById('saveMood').onclick = ()=>{
+            const note = document.getElementById('moodNote').value.trim();
+            const d = dateInput.value;
+            const data = load(d);
+            data.mood = {value: selectedMood || '🙂', note: note, label: moodLabel(selectedMood)};
+            save(d,data);
+        };
+        function moodLabel(m){
+            if(m==='😊') return 'Serein';
+            if(m==='🙂') return 'Bien';
+            if(m==='😐') return 'Neutre';
+            if(m==='😕') return 'Fatigué';
+            if(m==='😔') return 'Stressé';
+            return '';
+        }
+
+        // Clear day
+        document.getElementById('clearDay').onclick = ()=>{
+            if(!confirm('Supprimer toutes les données de cette date ?')) return;
+            localStorage.removeItem(storageKey(dateInput.value));
+            render();
+        };
+
+        // Export / Import
+        document.getElementById('exportBtn').onclick = ()=>{
+            const all = {};
+            for(let i=0;i<localStorage.length;i++){
+                const k = localStorage.key(i);
+                if(k && k.startsWith('journal-')) all[k] = JSON.parse(localStorage.getItem(k));
+            }
+            const blob = new Blob([JSON.stringify(all, null, 2)], {type:'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'journal.json'; a.click();
+            URL.revokeObjectURL(url);
+        };
+        const importFile = document.getElementById('importFile');
+        document.getElementById('importBtn').onclick = ()=> importFile.click();
+        importFile.onchange = async (e)=>{
+            const f = e.target.files[0];
+            if(!f) return;
+            try{
+                const txt = await f.text();
+                const obj = JSON.parse(txt);
+                Object.entries(obj).forEach(([k,v]) => { if(k.startsWith('journal-')) localStorage.setItem(k, JSON.stringify(v)); });
+                alert('Import terminé');
+                render();
+            }catch(err){ alert('Fichier invalide'); }
+            importFile.value = '';
+        };
+
+        dateInput.onchange = ()=>{ selectedMood = null; document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('mood-selected')); document.getElementById('moodNote').value=''; render(); };
+        // initial render
+        render();
+    </script>
+</body>
+</html>
